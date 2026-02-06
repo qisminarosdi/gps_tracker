@@ -68,7 +68,7 @@ You can download and test the app on an Android device using the link below:
 ### Prerequisites
 - Flutter SDK installed
 - Android or iOS environment set up
-- - Google Maps API key configured
+- Google Maps API key configured
 
 ### Steps
 ```bash
