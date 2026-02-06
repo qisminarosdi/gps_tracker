@@ -4,50 +4,38 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 import '../core/theme/app_theme.dart';
 import '../providers/providers.dart';
+import '../models/walk_session.dart';
 
 /// Recordings tab content for Walking History
-class RecordingsTab extends ConsumerStatefulWidget {
+class RecordingsTab extends ConsumerWidget {
   const RecordingsTab({super.key});
 
   @override
-  ConsumerState<RecordingsTab> createState() => _RecordingsTabState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watch sessions to get recordings with metadata
+    ref.watch(sessionsRefreshProvider);
+    final sessionsAsync = ref.watch(walkSessionsProvider);
 
-class _RecordingsTabState extends ConsumerState<RecordingsTab> {
-  List<String> recordings = [];
-  bool isLoading = true;
+    return sessionsAsync.when(
+      data: (sessions) {
+        // Filter sessions that have recording paths
+        final sessionsWithRecordings = sessions
+            .where((s) => s.recordingPath != null && s.recordingPath!.isNotEmpty)
+            .toList();
 
-  @override
-  void initState() {
-    super.initState();
-    _loadRecordings();
-  }
+        if (sessionsWithRecordings.isEmpty) {
+          return _buildEmptyState();
+        }
 
-  Future<void> _loadRecordings() async {
-    setState(() => isLoading = true);
-    final service = ref.read(screenRecorderServiceProvider);
-    final loadedRecordings = await service.getSavedRecordings();
-    setState(() {
-      recordings = loadedRecordings;
-      isLoading = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Center(
+        return _buildRecordingsList(context, ref, sessionsWithRecordings);
+      },
+      loading: () => const Center(
         child: CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryPurple),
         ),
-      );
-    }
-
-    if (recordings.isEmpty) {
-      return _buildEmptyState();
-    }
-
-    return _buildRecordingsList();
+      ),
+      error: (error, stack) => _buildErrorState(error.toString()),
+    );
   }
 
   Widget _buildEmptyState() {
@@ -74,17 +62,61 @@ class _RecordingsTabState extends ConsumerState<RecordingsTab> {
     );
   }
 
-  Widget _buildRecordingsList() {
+  Widget _buildErrorState(String error) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.error_outline,
+            size: 64,
+            color: AppTheme.errorRed,
+          ),
+          const SizedBox(height: AppTheme.spacingM),
+          Text(
+            'Error loading recordings',
+            style: AppTheme.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: AppTheme.spacingS),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingXL),
+            child: Text(
+              error,
+              textAlign: TextAlign.center,
+              style: AppTheme.bodySmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordingsList(
+    BuildContext context,
+    WidgetRef ref,
+    List<WalkSession> sessions,
+  ) {
     return ListView.builder(
       padding: const EdgeInsets.all(AppTheme.spacingM),
-      itemCount: recordings.length,
+      itemCount: sessions.length,
       itemBuilder: (context, index) {
+        final session = sessions[index];
         return _RecordingCard(
-          filePath: recordings[index],
+          session: session,
           onDelete: () async {
-            final service = ref.read(screenRecorderServiceProvider);
-            await service.deleteRecording(recordings[index]);
-            _loadRecordings();
+            // Delete the recording file
+            if (session.recordingPath != null) {
+              final service = ref.read(screenRecorderServiceProvider);
+              await service.deleteRecording(session.recordingPath!);
+            }
+
+            // Delete the session from storage
+            final sessionService = ref.read(sessionStorageServiceProvider);
+            await sessionService.deleteSession(session.id);
+
+            // Refresh the list
+            ref.read(sessionsRefreshProvider.notifier).state++;
+            ref.invalidate(walkSessionsProvider);
           },
         );
       },
@@ -93,19 +125,21 @@ class _RecordingsTabState extends ConsumerState<RecordingsTab> {
 }
 
 class _RecordingCard extends StatelessWidget {
-  final String filePath;
+  final WalkSession session;
   final VoidCallback onDelete;
 
   const _RecordingCard({
-    required this.filePath,
+    required this.session,
     required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    final fileName = filePath.split('/').last;
-    final file = File(filePath);
-    final dateTime = _extractDateTime(fileName);
+    final recordingPath = session.recordingPath;
+    if (recordingPath == null) return const SizedBox.shrink();
+
+    final file = File(recordingPath);
+    final fileExists = file.existsSync();
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppTheme.spacingM),
@@ -114,14 +148,16 @@ class _RecordingCard extends StatelessWidget {
       ),
       elevation: 2,
       child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => _VideoPlayerScreen(filePath: filePath),
-            ),
-          );
-        },
+        onTap: fileExists
+            ? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => _VideoPlayerScreen(filePath: recordingPath),
+                  ),
+                );
+              }
+            : null,
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.spacingM),
@@ -132,12 +168,12 @@ class _RecordingCard extends StatelessWidget {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryPurple.withValues(alpha:0.1),
+                  color: AppTheme.primaryPurple.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusM),
                 ),
-                child: const Icon(
-                  Icons.videocam,
-                  color: AppTheme.primaryPurple,
+                child: Icon(
+                  fileExists ? Icons.videocam : Icons.videocam_off,
+                  color: fileExists ? AppTheme.primaryPurple : Colors.grey,
                   size: 40,
                 ),
               ),
@@ -151,56 +187,80 @@ class _RecordingCard extends StatelessWidget {
                   children: [
                     // Date
                     Text(
-                      _formatDate(dateTime),
+                      _formatDate(session.dateTime),
                       style: AppTheme.sectionHeader.copyWith(fontSize: 18),
                     ),
-                    
+
+                    const SizedBox(height: 4),
+
+                    // Time
+                    Text(
+                      _formatTime(session.dateTime),
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.textLight,
+                      ),
+                    ),
+
                     const SizedBox(height: AppTheme.spacingS),
 
                     // Stats Row
                     Row(
                       children: [
-                        // Time icon and placeholder
+                        // Duration
                         const Icon(
                           Icons.timer_rounded,
                           size: 16,
                           color: AppTheme.textLight,
                         ),
                         const SizedBox(width: 4),
-                        const Text(
-                          '--',
+                        Text(
+                          session.formattedDuration,
                           style: AppTheme.bodySmall,
                         ),
 
                         const SizedBox(width: AppTheme.spacingM),
 
-                        // Distance icon and placeholder
+                        // Distance
                         const Icon(
                           Icons.straighten_rounded,
                           size: 16,
                           color: AppTheme.textLight,
                         ),
                         const SizedBox(width: 4),
-                        const Text(
-                          '--',
+                        Text(
+                          session.formattedDistance,
                           style: AppTheme.bodySmall,
                         ),
 
                         const SizedBox(width: AppTheme.spacingM),
 
-                        // File size
-                        const Icon(
-                          Icons.storage,
-                          size: 16,
-                          color: AppTheme.textLight,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatFileSize(file.lengthSync()),
-                          style: AppTheme.bodySmall,
-                        ),
+                        // File size (if file exists)
+                        if (fileExists) ...[
+                          const Icon(
+                            Icons.storage,
+                            size: 16,
+                            color: AppTheme.textLight,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatFileSize(file.lengthSync()),
+                            style: AppTheme.bodySmall,
+                          ),
+                        ],
                       ],
                     ),
+
+                    // Show warning if file doesn't exist
+                    if (!fileExists) ...[
+                      const SizedBox(height: AppTheme.spacingXS),
+                      Text(
+                        'Recording file not found',
+                        style: AppTheme.bodySmall.copyWith(
+                          color: AppTheme.errorRed,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -224,7 +284,7 @@ class _RecordingCard extends StatelessWidget {
         shape: AppTheme.dialogShape,
         title: const Text('Delete Recording', style: AppTheme.dialogTitle),
         content: const Text(
-          'Are you sure you want to delete this recording?',
+          'Are you sure you want to delete this recording and session data?',
           style: AppTheme.dialogContent,
         ),
         actions: [
@@ -246,18 +306,16 @@ class _RecordingCard extends StatelessWidget {
     );
   }
 
-  DateTime _extractDateTime(String fileName) {
-    try {
-      final timestamp = fileName.replaceAll('recording_', '').replaceAll('.mp4', '');
-      return DateTime.fromMillisecondsSinceEpoch(int.parse(timestamp));
-    } catch (e) {
-      return DateTime.now();
-    }
-  }
-
   String _formatDate(DateTime date) {
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return '${months[date.month - 1]} ${date.day.toString().padLeft(2, '0')}, ${date.year}';
+  }
+
+  String _formatTime(DateTime date) {
+    final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+    final minute = date.minute.toString().padLeft(2, '0');
+    final period = date.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $period';
   }
 
   String _formatFileSize(int bytes) {

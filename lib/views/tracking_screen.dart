@@ -4,6 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:gps_tracker_app/models/tracking_state.dart';
 import '../core/theme/app_theme.dart';
 import '../providers/providers.dart';
+import '../providers/saved_screenshots_provider.dart';
 import '../widgets/control_buttons.dart';
 import '../widgets/info_overlay.dart';
 import '../widgets/gps_status_indicator.dart';
@@ -414,9 +415,15 @@ class _TrackingScreenState extends ConsumerState<TrackingScreen> {
     final duration = state.recordingDuration ?? Duration.zero;
     final distanceKm = state.totalDistance / 1000;
 
+    // Stop recording and save session
     final path = await ref
         .read(trackingControllerProvider.notifier)
         .stopRecording(mapKey: _mapKey);
+
+    ref.read(sessionsRefreshProvider.notifier).state++;
+    ref.read(screenshotsRefreshProvider.notifier).state++;
+    ref.invalidate(walkSessionsProvider);
+    ref.invalidate(savedScreenshotsProvider);
 
     if (!mounted) return;
 

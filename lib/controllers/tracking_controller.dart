@@ -6,10 +6,12 @@ import 'package:geolocator/geolocator.dart';
 import '../models/tracking_state.dart';
 import '../models/path_point.dart';
 import '../models/custom_marker.dart';
+import '../models/walk_session.dart';
 import '../services/location_service.dart';
 import '../services/screenshot_service.dart';
 import '../services/storage_service.dart';
 import '../services/screen_recorder_service.dart';
+import '../services/session_storage_service.dart';
 
 /// Controller for managing GPS tracking state and operations.
 class TrackingController extends StateNotifier<TrackingState> {
@@ -17,6 +19,7 @@ class TrackingController extends StateNotifier<TrackingState> {
   final ScreenshotService _screenshotService;
   final StorageService _storageService;
   final ScreenRecorderService _screenRecorderService;
+  final SessionStorageService _sessionStorageService;
   StreamSubscription<Position>? _positionSubscription;
   Timer? _autoSaveTimer;
   Timer? _errorClearTimer;
@@ -30,10 +33,12 @@ class TrackingController extends StateNotifier<TrackingState> {
     required ScreenshotService screenshotService,
     required StorageService storageService,
     required ScreenRecorderService screenRecorderService,
+    required SessionStorageService sessionStorageService,
   })  : _locationService = locationService,
         _screenshotService = screenshotService,
         _storageService = storageService,
         _screenRecorderService = screenRecorderService,
+        _sessionStorageService = sessionStorageService,
         super(const TrackingState());
 
   /// Initialize controller and request necessary permissions.
@@ -87,6 +92,10 @@ class TrackingController extends StateNotifier<TrackingState> {
     if (state.isRecording) return;
 
     try {
+      // Clear previous session data before starting new recording
+      state = const TrackingState();
+      await _storageService.clearSession();
+
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         _setError('Please enable location services');
@@ -214,7 +223,7 @@ class TrackingController extends StateNotifier<TrackingState> {
     state = state.copyWith(hasGpsError: true);
   }
 
-  /// Stop recording and save screenshot and video.
+  /// Stop recording and save screenshot, video, and WalkSession.
   Future<String?> stopRecording({GlobalKey? mapKey}) async {
     if (!state.isRecording && !state.isPaused) return null;
 
@@ -225,6 +234,12 @@ class TrackingController extends StateNotifier<TrackingState> {
       _autoSaveTimer?.cancel();
       _autoSaveTimer = null;
 
+      // Save current state before processing
+      final recordingDuration = state.recordingDuration;
+      final totalDistance = state.totalDistance;
+      final pathPoints = state.pathPoints;
+      final isScreenRecording = state.isScreenRecording;
+
       state = state.copyWith(
         isRecording: false,
         isPaused: false,
@@ -234,17 +249,19 @@ class TrackingController extends StateNotifier<TrackingState> {
       await _storageService.saveSession(state);
 
       String? screenshotPath;
+      String? videoPath;
 
-      if (state.isScreenRecording) {
+      // Stop and save screen recording
+      if (isScreenRecording) {
         try {
-          state = state.copyWith(isScreenRecording: false);
+          videoPath = await _screenRecorderService.stopRecording();
         } catch (e) {
           // Ignore video save errors
-          state = state.copyWith(isScreenRecording: false);
         }
       }
 
-      if (mapKey != null && state.hasData) {
+      // Capture screenshot
+      if (mapKey != null && pathPoints.isNotEmpty) {
         try {
           // Wait for map to render
           await Future.delayed(const Duration(milliseconds: 500));
@@ -257,9 +274,24 @@ class TrackingController extends StateNotifier<TrackingState> {
         }
       }
 
-      state = state.copyWith(isProcessing: false);
-      
+      // Save WalkSession with all data INCLUDING pathPoints
+      if (pathPoints.isNotEmpty) {
+        final session = WalkSession(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          dateTime: DateTime.now(),
+          duration: recordingDuration ?? Duration.zero,
+          distanceMeters: totalDistance,
+          recordingPath: videoPath,
+          screenshotPath: screenshotPath,
+          pathPoints: pathPoints,
+        );
+        
+        await _sessionStorageService.saveSession(session);
+      }
+
+      // Clear all data and reset to fresh state
       await _storageService.clearRecoveredSession();
+      state = const TrackingState();
       
       return screenshotPath;
     } catch (e) {

@@ -2,13 +2,18 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-/// Service for location tracking and GPS operations.
+/// Service for location tracking and GPS operations with optimized loading.
 class LocationService {
   static const double _noiseFilterDistanceMeters = 50.0;
   static const double _fastMovementThreshold = 100.0;
   static const int _minDistanceFilterMeters = 5;
   static const double _speedThresholdMps = 5.0;
   static const int _gpsTimeoutSeconds = 10;
+  
+  // Cache for faster initial load
+  Position? _lastKnownPosition;
+  DateTime? _lastPositionTime;
+  static const Duration _cacheValidity = Duration(minutes: 5);
 
   Future<bool> requestPermissions() async {
     bool serviceEnabled;
@@ -48,15 +53,51 @@ class LocationService {
 
   Future<Position> getCurrentPosition() async {
     try {
+      if (_lastKnownPosition != null && _lastPositionTime != null) {
+        final age = DateTime.now().difference(_lastPositionTime!);
+        if (age < _cacheValidity) {
+          _updatePositionInBackground();
+          return _lastKnownPosition!;
+        }
+      }
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        _lastKnownPosition = lastKnown;
+        _lastPositionTime = DateTime.now();
+        
+        // Get fresh position in background
+        _updatePositionInBackground();
+        
+        return lastKnown;
+      }
+
+      // reduced timeout 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-        timeLimit: const Duration(seconds: 10),
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 5),
       );
+      
+      _lastKnownPosition = position;
+      _lastPositionTime = DateTime.now();
       
       return position;
     } catch (e) {
+      if (_lastKnownPosition != null) {
+        return _lastKnownPosition!;
+      }
       throw Exception('Failed to get current position: $e');
     }
+  }
+
+  void _updatePositionInBackground() {
+    Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.best,
+      timeLimit: const Duration(seconds: 10),
+    ).then((position) {
+      _lastKnownPosition = position;
+      _lastPositionTime = DateTime.now();
+    }).catchError((_) {
+    });
   }
 
   Stream<Position> getPositionStreamFull() {
@@ -177,6 +218,11 @@ class LocationService {
       final km = meters / 1000;
       return '${km.toStringAsFixed(2)} km';
     }
+  }
+ 
+  void clearCache() {
+    _lastKnownPosition = null;
+    _lastPositionTime = null;
   }
 }
 

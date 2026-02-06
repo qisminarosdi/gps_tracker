@@ -4,22 +4,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_theme.dart';
 import '../providers/saved_screenshots_provider.dart';
 import '../providers/providers.dart';
+import '../models/walk_session.dart';
+import '../views/walk_detail_screen.dart';
 
-/// Screenshots tab content for Walking History
 class ScreenshotsTab extends ConsumerWidget {
   const ScreenshotsTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(screenshotsRefreshProvider);
+    ref.watch(sessionsRefreshProvider);
     final screenshotsAsync = ref.watch(savedScreenshotsProvider);
+    final sessionsAsync = ref.watch(walkSessionsProvider);
 
     return screenshotsAsync.when(
       data: (screenshots) {
         if (screenshots.isEmpty) {
           return _buildEmptyState();
         }
-        return _buildScreenshotList(context, ref, screenshots);
+        return sessionsAsync.when(
+          data: (sessions) =>
+              _buildScreenshotList(context, ref, screenshots, sessions),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, __) => _buildScreenshotList(context, ref, screenshots, []),
+        );
       },
       loading: () => const Center(
         child: CircularProgressIndicator(
@@ -91,13 +99,19 @@ class ScreenshotsTab extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     List<String> screenshots,
+    List<WalkSession> sessions,
   ) {
     return ListView.builder(
       padding: const EdgeInsets.all(AppTheme.spacingM),
       itemCount: screenshots.length,
       itemBuilder: (context, index) {
         final screenshotPath = screenshots[index];
-        return _buildScreenshotCard(context, ref, screenshotPath);
+        // Find matching session
+        final session = sessions.cast<WalkSession?>().firstWhere(
+              (s) => s?.screenshotPath == screenshotPath,
+              orElse: () => null,
+            );
+        return _buildScreenshotCard(context, ref, screenshotPath, session);
       },
     );
   }
@@ -106,10 +120,12 @@ class ScreenshotsTab extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     String screenshotPath,
+    WalkSession? session,
   ) {
     final file = File(screenshotPath);
     final fileName = screenshotPath.split('/').last;
-    final dateTime = _extractDateTime(fileName);
+    final dateTime = session?.dateTime ?? _extractDateTime(fileName);
+    final fileExists = file.existsSync();
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppTheme.spacingM),
@@ -118,117 +134,114 @@ class ScreenshotsTab extends ConsumerWidget {
       ),
       elevation: 2,
       child: InkWell(
-        onTap: () => _showFullScreenImage(context, ref, screenshotPath),
+        onTap: fileExists && session != null
+            ? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => WalkDetailScreen(session: session),
+                  ),
+                );
+              }
+            : null,
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.spacingM),
           child: Row(
             children: [
-              // Map Thumbnail
               ClipRRect(
                 borderRadius: BorderRadius.circular(AppTheme.radiusM),
                 child: SizedBox(
                   width: 80,
                   height: 80,
-                  child: Image.file(
-                    file,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[200],
-                        child: const Icon(
-                          Icons.broken_image,
-                          size: 32,
-                          color: Colors.grey,
+                  child: fileExists
+                      ? Image.file(
+                          file,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[200],
+                              child: const Icon(
+                                Icons.broken_image,
+                                size: 32,
+                                color: Colors.grey,
+                              ),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: Colors.grey[200],
+                          child: const Icon(
+                            Icons.broken_image,
+                            size: 32,
+                            color: Colors.grey,
+                          ),
                         ),
-                      );
-                    },
-                  ),
                 ),
               ),
-
               const SizedBox(width: AppTheme.spacingM),
-
-              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Date
                     Text(
                       _formatDate(dateTime),
                       style: AppTheme.sectionHeader.copyWith(fontSize: 18),
                     ),
-                    
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatTime(dateTime),
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.textLight,
+                      ),
+                    ),
                     const SizedBox(height: AppTheme.spacingS),
-
-                    // Stats Row
-                    const Row(
+                    Row(
                       children: [
-                        // Time icon and placeholder
-                        Icon(
+                        const Icon(
                           Icons.timer_rounded,
                           size: 16,
                           color: AppTheme.textLight,
                         ),
-                        SizedBox(width: 4),
+                        const SizedBox(width: 4),
                         Text(
-                          '--',
+                          session?.formattedDuration ?? '--',
                           style: AppTheme.bodySmall,
                         ),
-
-                        SizedBox(width: AppTheme.spacingM),
-
-                        // Distance icon and placeholder
-                        Icon(
+                        const SizedBox(width: AppTheme.spacingM),
+                        const Icon(
                           Icons.straighten_rounded,
                           size: 16,
                           color: AppTheme.textLight,
                         ),
-                        SizedBox(width: 4),
+                        const SizedBox(width: 4),
                         Text(
-                          '--',
+                          session?.formattedDistance ?? '--',
                           style: AppTheme.bodySmall,
                         ),
                       ],
                     ),
+                    // Show warning if file doesn't exist
+                    if (!fileExists) ...[
+                      const SizedBox(height: AppTheme.spacingXS),
+                      Text(
+                        'Screenshot file not found',
+                        style: AppTheme.bodySmall.copyWith(
+                          color: AppTheme.errorRed,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-
-              // Delete Button
               IconButton(
                 icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed),
-                onPressed: () => _showDeleteConfirmation(context, ref, screenshotPath),
+                onPressed: () =>
+                    _showDeleteConfirmation(context, ref, screenshotPath, session),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  void _showFullScreenImage(
-    BuildContext context,
-    WidgetRef ref,
-    String screenshotPath,
-  ) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => _FullScreenImageViewer(
-          imagePath: screenshotPath,
-          onDelete: () async {
-            final screenshotService = ref.read(screenshotServiceProvider);
-            await screenshotService.deleteScreenshot(screenshotPath);
-
-            ref.read(screenshotsRefreshProvider.notifier).state++;
-            ref.invalidate(savedScreenshotsProvider);
-
-            if (context.mounted) {
-              Navigator.pop(context);
-            }
-          },
         ),
       ),
     );
@@ -238,14 +251,17 @@ class ScreenshotsTab extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     String screenshotPath,
+    WalkSession? session,
   ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: AppTheme.dialogShape,
         title: const Text('Delete Screenshot', style: AppTheme.dialogTitle),
-        content: const Text(
-          'Are you sure you want to delete this screenshot?',
+        content: Text(
+          session != null
+              ? 'Are you sure you want to delete this screenshot and session data?'
+              : 'Are you sure you want to delete this screenshot?',
           style: AppTheme.dialogContent,
         ),
         actions: [
@@ -259,6 +275,14 @@ class ScreenshotsTab extends ConsumerWidget {
               Navigator.pop(context);
               final screenshotService = ref.read(screenshotServiceProvider);
               await screenshotService.deleteScreenshot(screenshotPath);
+
+              // Delete session if it exists
+              if (session != null) {
+                final sessionService = ref.read(sessionStorageServiceProvider);
+                await sessionService.deleteSession(session.id);
+                ref.read(sessionsRefreshProvider.notifier).state++;
+              }
+
               ref.read(screenshotsRefreshProvider.notifier).state++;
               ref.invalidate(savedScreenshotsProvider);
             },
@@ -272,7 +296,8 @@ class ScreenshotsTab extends ConsumerWidget {
 
   DateTime _extractDateTime(String fileName) {
     try {
-      final timestamp = fileName.replaceAll('path_', '').replaceAll('.png', '');
+      final timestamp =
+          fileName.replaceAll('path_', '').replaceAll('.png', '');
       return DateTime.fromMillisecondsSinceEpoch(int.parse(timestamp));
     } catch (e) {
       return DateTime.now();
@@ -280,72 +305,27 @@ class ScreenshotsTab extends ConsumerWidget {
   }
 
   String _formatDate(DateTime date) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return '${months[date.month - 1]} ${date.day.toString().padLeft(2, '0')}, ${date.year}';
   }
-}
 
-class _FullScreenImageViewer extends StatelessWidget {
-  final String imagePath;
-  final VoidCallback onDelete;
-
-  const _FullScreenImageViewer({
-    required this.imagePath,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: AppTheme.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete, color: AppTheme.white),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  shape: AppTheme.dialogShape,
-                  title: const Text('Delete Screenshot', style: AppTheme.dialogTitle),
-                  content: const Text(
-                    'Are you sure you want to delete this screenshot?',
-                    style: AppTheme.dialogContent,
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: AppTheme.textButton,
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        onDelete();
-                      },
-                      style: TextButton.styleFrom(foregroundColor: AppTheme.errorRed),
-                      child: const Text('Delete'),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Center(
-        child: InteractiveViewer(
-          minScale: 0.5,
-          maxScale: 4.0,
-          child: Image.file(File(imagePath), fit: BoxFit.contain),
-        ),
-      ),
-    );
+  String _formatTime(DateTime date) {
+    final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+    final minute = date.minute.toString().padLeft(2, '0');
+    final period = date.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $period';
   }
 }
