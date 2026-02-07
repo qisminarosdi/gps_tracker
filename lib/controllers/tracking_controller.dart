@@ -13,7 +13,7 @@ import '../services/storage_service.dart';
 import '../services/screen_recorder_service.dart';
 import '../services/session_storage_service.dart';
 
-/// Controller for managing GPS tracking state and operations.
+// Controller for managing GPS tracking state and operations.
 class TrackingController extends StateNotifier<TrackingState> {
   final LocationService _locationService;
   final ScreenshotService _screenshotService;
@@ -41,7 +41,7 @@ class TrackingController extends StateNotifier<TrackingState> {
         _sessionStorageService = sessionStorageService,
         super(const TrackingState());
 
-  /// Initialize controller and request necessary permissions.
+  // Initialize controller and request necessary permissions.
   Future<void> initialize() async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -87,7 +87,7 @@ class TrackingController extends StateNotifier<TrackingState> {
     }
   }
 
-  /// Start GPS recording and screen recording.
+  // Start GPS recording and screen recording.
   Future<void> startRecording() async {
     if (state.isRecording) return;
 
@@ -143,7 +143,7 @@ class TrackingController extends StateNotifier<TrackingState> {
     }
   }
 
-  /// Pause the current recording session.
+  // Pause the current recording session.
   void pauseRecording() {
     if (!state.isRecording || state.isPaused) return;
     
@@ -153,7 +153,7 @@ class TrackingController extends StateNotifier<TrackingState> {
     state = state.copyWith(isPaused: true);
   }
 
-  /// Resume a paused recording session.
+  // Resume a paused recording session.
   Future<void> resumeRecording() async {
     if (!state.isPaused) return;
     
@@ -169,7 +169,7 @@ class TrackingController extends StateNotifier<TrackingState> {
     }
   }
 
-  /// Handle position updates with accuracy filtering.
+  // Handle position updates with accuracy filtering.
   void _onPositionUpdate(Position position) {
     if (!state.isRecording || state.isPaused) return;
 
@@ -186,7 +186,6 @@ class TrackingController extends StateNotifier<TrackingState> {
         ? state.pathPoints.last.toLatLng()
         : null;
 
-    // Validate point using speed-aware filtering
     if (_locationService.isValidPoint(
       newLatLng,
       lastPoint,
@@ -212,7 +211,7 @@ class TrackingController extends StateNotifier<TrackingState> {
     }
   }
 
-  /// Handle position stream errors without stopping recording.
+  // Handle position stream errors without stopping recording.
   void _onPositionError(dynamic error) {
     if (error is TimeoutException) {
       _setError('GPS signal lost - check your location');
@@ -223,7 +222,7 @@ class TrackingController extends StateNotifier<TrackingState> {
     state = state.copyWith(hasGpsError: true);
   }
 
-  /// Stop recording and save screenshot, video, and WalkSession.
+  // Stop recording and save screenshot, video, and WalkSession.
   Future<String?> stopRecording({GlobalKey? mapKey}) async {
     if (!state.isRecording && !state.isPaused) return null;
 
@@ -263,7 +262,6 @@ class TrackingController extends StateNotifier<TrackingState> {
       // Capture screenshot
       if (mapKey != null && pathPoints.isNotEmpty) {
         try {
-          // Wait for map to render
           await Future.delayed(const Duration(milliseconds: 500));
           
           screenshotPath = await _screenshotService.captureAndSaveScreenshot(
@@ -274,7 +272,7 @@ class TrackingController extends StateNotifier<TrackingState> {
         }
       }
 
-      // Save WalkSession with all data INCLUDING pathPoints
+      // Save WalkSession
       if (pathPoints.isNotEmpty) {
         final session = WalkSession(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -306,7 +304,7 @@ class TrackingController extends StateNotifier<TrackingState> {
     }
   }
 
-  /// Add a custom marker at current position.
+  // Add a custom marker at current position.
   void addMarker({String? customTitle}) {
     if (state.pathPoints.isEmpty) {
       _setError('No position available. Start recording first.');
@@ -328,7 +326,7 @@ class TrackingController extends StateNotifier<TrackingState> {
     );
   }
 
-  /// Recover data from a previous session.
+  // Recover data from a previous session.
   Future<void> recoverSession() async {
     try {
       final recoveredState = await _storageService.recoverSession();
@@ -344,23 +342,23 @@ class TrackingController extends StateNotifier<TrackingState> {
     }
   }
 
-  /// Clear recovered session data.
+  // Clear recovered session data.
   Future<void> clearRecoveredSession() async {
     await _storageService.clearRecoveredSession();
     state = state.copyWith(hasRecoveredSession: false);
   }
 
-  /// Open device location settings.
+  // Open device location settings.
   Future<void> openLocationSettings() async {
     await Geolocator.openLocationSettings();
   }
 
-  /// Open app settings for permissions.
+  // Open app settings for permissions.
   Future<void> openAppSettings() async {
     await Geolocator.openAppSettings();
   }
 
-  /// Clear all tracking data and reset state.
+  // Clear all tracking data and reset state.
   void clearData() {
     _positionSubscription?.cancel();
     _autoSaveTimer?.cancel();
@@ -369,18 +367,15 @@ class TrackingController extends StateNotifier<TrackingState> {
     state = const TrackingState();
   }
 
-  /// Clear current error message.
   void clearError() {
     _errorClearTimer?.cancel();
     state = state.copyWith(clearError: true);
   }
 
-  /// Clear current warning message.
   void clearWarning() {
     state = state.copyWith(clearWarning: true);
   }
 
-  /// Set error message with auto-clear after 5 seconds.
   void _setError(String message) {
     state = state.copyWith(errorMessage: message);
     
@@ -392,7 +387,6 @@ class TrackingController extends StateNotifier<TrackingState> {
     });
   }
 
-  /// Start periodic auto-save timer.
   void _startAutoSave() {
     _autoSaveTimer?.cancel();
     _autoSaveTimer = Timer.periodic(_autoSaveInterval, (_) async {

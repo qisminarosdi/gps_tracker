@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-/// Service for location tracking and GPS operations with optimized loading.
+// GPS + location tracking logic
 class LocationService {
   static const double _noiseFilterDistanceMeters = 50.0;
   static const double _fastMovementThreshold = 100.0;

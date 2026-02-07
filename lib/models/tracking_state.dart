@@ -4,7 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'custom_marker.dart';
 import 'path_point.dart';
 
-/// Current state of GPS tracking.
+// Current state of GPS tracking.
 class TrackingState {
   final bool isRecording;
   final bool isPaused;

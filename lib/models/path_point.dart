@@ -1,7 +1,6 @@
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 
-/// GPS coordinate point with metadata.
 class PathPoint {
   final double latitude;
   final double longitude;

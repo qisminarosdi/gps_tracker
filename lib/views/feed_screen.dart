@@ -6,6 +6,7 @@ import '../widgets/feed/error_view.dart';
 import '../widgets/feed/empty_view.dart';
 import '../widgets/feed/loading_view.dart';
 
+// Main feed screen displaying user walk moments with infinite scroll
 class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
 
@@ -34,12 +35,14 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     super.dispose();
   }
 
+  // Load initial feed data after first frame
   void _initializeFeed() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(feedControllerProvider).loadInitialFeed();
     });
   }
 
+  // Trigger pagination when scrolled near threshold
   void _setupScrollListener() {
     _scrollController.addListener(() {
       final controller = ref.read(feedControllerProvider);
@@ -51,6 +54,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     });
   }
 
+  // Show snackbar for pagination errors with retry option
   void _showPaginationErrorSnackbar(controller) {
     if (controller.paginationError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -85,6 +89,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     );
   }
 
+  // Render appropriate view based on loading/error states
   Widget _buildBody(controller) {
     if (controller.isInitialLoad) {
       return const LoadingView();
@@ -139,6 +144,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     );
   }
 
+  // Scrollable feed list with pull-to-refresh
   Widget _buildFeedList(controller) {
     return RefreshIndicator(
       onRefresh: controller.loadInitialFeed,

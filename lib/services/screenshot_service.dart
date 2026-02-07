@@ -5,19 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Service responsible for capturing and saving map screenshots
+/// Handles map screenshot capture and storage
 class ScreenshotService {
-  /// Capture screenshot from a RepaintBoundary key
+  /// Captures widget as image and saves to device storage
   Future<String> captureAndSaveScreenshot(GlobalKey key) async {
     try {
-      // Get the render object
+      // Render widget to image with 3x quality
       final RenderRepaintBoundary boundary =
           key.currentContext?.findRenderObject() as RenderRepaintBoundary;
-
-      // Capture the image
       final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-
-      // Convert to byte data
+      
+      // Convert to PNG bytes
       final ByteData? byteData =
           await image.toByteData(format: ui.ImageByteFormat.png);
 
@@ -25,12 +23,11 @@ class ScreenshotService {
         throw Exception('Failed to convert image to bytes');
       }
 
-      // Get the directory to save
+      // Save to app documents with timestamp filename
       final directory = await getApplicationDocumentsDirectory();
       final fileName = 'path_${DateTime.now().millisecondsSinceEpoch}.png';
       final filePath = '${directory.path}/$fileName';
 
-      // Save the file
       final file = File(filePath);
       await file.writeAsBytes(byteData.buffer.asUint8List());
 
@@ -40,7 +37,7 @@ class ScreenshotService {
     }
   }
 
-  /// Get list of saved screenshots
+  /// Returns all saved screenshots sorted by newest first
   Future<List<String>> getSavedScreenshots() async {
     try {
       final directory = await getApplicationDocumentsDirectory();
@@ -51,7 +48,6 @@ class ScreenshotService {
           .map((f) => f.path)
           .toList();
 
-      // Sort by date (newest first)
       files.sort((a, b) => b.compareTo(a));
       return files;
     } catch (e) {
@@ -59,7 +55,7 @@ class ScreenshotService {
     }
   }
 
-  /// Delete a screenshot file
+  /// Deletes screenshot file if it exists
   Future<void> deleteScreenshot(String filePath) async {
     try {
       final file = File(filePath);

@@ -1,6 +1,5 @@
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-/// Model representing a custom marker placed by the user
 class CustomMarker {
   final String id;
   final double latitude;
@@ -16,7 +15,7 @@ class CustomMarker {
     this.title = 'Checkpoint',
   });
 
-  /// Convert to Google Maps Marker
+  // convert to google maps marker
   Marker toMarker() {
     return Marker(
       markerId: MarkerId(id),
@@ -34,7 +33,7 @@ class CustomMarker {
         '${timestamp.minute.toString().padLeft(2, '0')}';
   }
 
-  /// Convert to JSON
+  // convert to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -45,7 +44,7 @@ class CustomMarker {
     };
   }
 
-  /// Create from JSON
+  // create from JSON
   factory CustomMarker.fromJson(Map<String, dynamic> json) {
     return CustomMarker(
       id: json['id'] as String,

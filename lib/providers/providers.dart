@@ -55,7 +55,7 @@ final walkSessionsProvider = FutureProvider<List<WalkSession>>((ref) async {
 
 final sessionsRefreshProvider = StateProvider<int>((ref) => 0);
 
-// Feed Controller Provider
+// Feed controller provider
 final feedControllerProvider = ChangeNotifierProvider<FeedController>((ref) {
   return FeedController();
 });

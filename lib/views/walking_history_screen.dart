@@ -4,7 +4,7 @@ import '../core/theme/app_theme.dart';
 import '../widgets/screenshots_tab.dart';
 import '../widgets/recordings_tab.dart';
 
-/// Walking History screen with tabs for Screenshots and Recordings
+// Walking History screen with tabs for screenshots and recordings
 class WalkingHistoryScreen extends ConsumerStatefulWidget {
   const WalkingHistoryScreen({super.key});
 

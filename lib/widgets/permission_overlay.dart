@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Overlay shown when location permissions need to be configured
+/// overlay shown when location permissions need to be configured
 class PermissionOverlay extends StatelessWidget {
   final bool locationServicesDisabled;
   final bool permissionDenied;

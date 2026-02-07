@@ -4,6 +4,7 @@ import '../core/theme/app_theme.dart';
 import '../models/walk_session.dart';
 import '../models/path_point.dart';
 
+// display completed walk route on oogle aps with start/end markers
 class WalkMapViewerScreen extends StatefulWidget {
   final WalkSession session;
 
@@ -39,6 +40,7 @@ class _WalkMapViewerScreenState extends State<WalkMapViewerScreen> {
       );
     }
 
+    // create polyline from path points
     final polyline = Polyline(
       polylineId: const PolylineId('walk_path'),
       points: widget.session.pathPoints.map((p) => p.toLatLng()).toList(),
@@ -52,6 +54,7 @@ class _WalkMapViewerScreenState extends State<WalkMapViewerScreen> {
     final startPoint = widget.session.pathPoints.first;
     final endPoint = widget.session.pathPoints.last;
 
+    // add start (green) and end (red) markers
     final markers = <Marker>{
       Marker(
         markerId: const MarkerId('start'),
@@ -101,6 +104,7 @@ class _WalkMapViewerScreenState extends State<WalkMapViewerScreen> {
     );
   }
 
+  // calculate map bounds to fit all path points
   _MapBounds _calculateBounds(List<PathPoint> pathPoints) {
     if (pathPoints.isEmpty) {
       return _MapBounds(

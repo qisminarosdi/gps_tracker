@@ -5,6 +5,7 @@ import 'tracking_screen.dart';
 import 'walking_history_screen.dart';
 import 'feed_screen.dart';
 
+// Main home screen with navigation to tracking, history, and feed
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -54,6 +55,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  // Primary action card to start walk tracking
   Widget _buildStartWalkingCard(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -122,6 +124,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  // Card with link to walking history screen
   Widget _buildWalkingHistoryCard(BuildContext context) {
     return Container(
       decoration: AppTheme.cardDecoration,
@@ -157,6 +160,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  // Card with link to media feed screen
   Widget _buildMediaFeedCard(BuildContext context) {
     return Container(
       decoration: AppTheme.cardDecoration,
@@ -192,6 +196,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  // Reusable navigation option row with icon and description
   Widget _buildHistoryOption({
     required BuildContext context,
     required IconData icon,

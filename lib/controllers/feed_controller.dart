@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import '../models/moment.dart';
 import '../services/api_service.dart';
 
-/// Controller handles all business logic for the feed
-/// Follows MVC pattern - separates business logic from UI
 class FeedController extends ChangeNotifier {
   final ApiService _apiService = ApiService();
 
@@ -16,7 +14,7 @@ class FeedController extends ChangeNotifier {
   String? _paginationError;
   bool _isInitialLoad = true;
 
-  // Getters (Public Interface)
+  // Getters
   List<Moment> get moments => List.unmodifiable(_moments);
   bool get isLoading => _isLoading;
   bool get hasMore => _hasMore;
@@ -25,14 +23,14 @@ class FeedController extends ChangeNotifier {
   bool get isInitialLoad => _isInitialLoad;
   bool get isEmpty => _moments.isEmpty;
 
-  /// Load initial feed (called on app start or pull-to-refresh)
+  /// Load initial feed
   Future<void> loadInitialFeed() async {
     _resetState();
     await _fetchMoments(isInitial: true);
     _isInitialLoad = false;
   }
 
-  /// Load more moments (infinite scroll pagination)
+  /// Load more moments
   Future<void> loadMoreMoments() async {
     if (_isLoading || !_hasMore) return;
     await _fetchMoments(isInitial: false);
@@ -50,13 +48,12 @@ class FeedController extends ChangeNotifier {
     loadMoreMoments();
   }
 
-  /// Clear pagination error (for snackbar dismissal)
+  /// Clear pagination error
   void clearPaginationError() {
     _paginationError = null;
     notifyListeners();
   }
 
-  /// Check if should preload based on scroll position
   bool shouldPreload(int currentIndex, int totalItems) {
     const preloadThreshold = 5;
     return currentIndex >= preloadThreshold - 1 && !_isLoading && _hasMore;
@@ -105,7 +102,6 @@ class FeedController extends ChangeNotifier {
       _moments.addAll(response.items);
       _currentTag = response.nextTag;
 
-      // If no nextTag, assume no more data
       if (response.nextTag == null || response.nextTag!.isEmpty) {
         _hasMore = false;
       }

@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_screen_recording/flutter_screen_recording.dart';
 
-/// Service for screen recording functionality.
+// handle screen recording
 class ScreenRecorderService {
   bool _isRecording = false;
 

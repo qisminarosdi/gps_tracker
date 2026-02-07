@@ -6,7 +6,7 @@ import '../core/theme/app_theme.dart';
 import '../providers/providers.dart';
 import '../models/walk_session.dart';
 
-/// Recordings tab content for Walking History
+// Tab showing all recorded walk sessions with video playback
 class RecordingsTab extends ConsumerWidget {
   const RecordingsTab({super.key});
 
@@ -124,6 +124,7 @@ class RecordingsTab extends ConsumerWidget {
   }
 }
 
+// Card displaying recording info with playback and delete options
 class _RecordingCard extends StatelessWidget {
   final WalkSession session;
   final VoidCallback onDelete;
@@ -163,7 +164,7 @@ class _RecordingCard extends StatelessWidget {
           padding: const EdgeInsets.all(AppTheme.spacingM),
           child: Row(
             children: [
-              // Video Icon
+              // Video icon indicator
               Container(
                 width: 80,
                 height: 80,
@@ -180,12 +181,11 @@ class _RecordingCard extends StatelessWidget {
 
               const SizedBox(width: AppTheme.spacingM),
 
-              // Info
+              // Session metadata
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Date
                     Text(
                       _formatDate(session.dateTime),
                       style: AppTheme.sectionHeader.copyWith(fontSize: 18),
@@ -193,7 +193,6 @@ class _RecordingCard extends StatelessWidget {
 
                     const SizedBox(height: 4),
 
-                    // Time
                     Text(
                       _formatTime(session.dateTime),
                       style: AppTheme.bodySmall.copyWith(
@@ -203,10 +202,9 @@ class _RecordingCard extends StatelessWidget {
 
                     const SizedBox(height: AppTheme.spacingS),
 
-                    // Stats Row
+                    // Duration, distance, and file size
                     Row(
                       children: [
-                        // Duration
                         const Icon(
                           Icons.timer_rounded,
                           size: 16,
@@ -220,7 +218,6 @@ class _RecordingCard extends StatelessWidget {
 
                         const SizedBox(width: AppTheme.spacingM),
 
-                        // Distance
                         const Icon(
                           Icons.straighten_rounded,
                           size: 16,
@@ -234,7 +231,6 @@ class _RecordingCard extends StatelessWidget {
 
                         const SizedBox(width: AppTheme.spacingM),
 
-                        // File size (if file exists)
                         if (fileExists) ...[
                           const Icon(
                             Icons.storage,
@@ -250,7 +246,7 @@ class _RecordingCard extends StatelessWidget {
                       ],
                     ),
 
-                    // Show warning if file doesn't exist
+                    // Warning for missing files
                     if (!fileExists) ...[
                       const SizedBox(height: AppTheme.spacingXS),
                       Text(
@@ -265,7 +261,6 @@ class _RecordingCard extends StatelessWidget {
                 ),
               ),
 
-              // Delete Button
               IconButton(
                 icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed),
                 onPressed: () => _showDeleteConfirmation(context),
@@ -327,6 +322,7 @@ class _RecordingCard extends StatelessWidget {
   }
 }
 
+// Fullscreen video player with play/pause control
 class _VideoPlayerScreen extends StatefulWidget {
   final String filePath;
 

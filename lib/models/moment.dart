@@ -24,7 +24,7 @@ class Moment {
         .where((url) => url.isNotEmpty)
         .toList();
 
-    // Parse description - handle both string and JSON format
+   // Parse description (string or JSON)
     String parsedDescription = '';
     final rawDescription = json['description'];
     

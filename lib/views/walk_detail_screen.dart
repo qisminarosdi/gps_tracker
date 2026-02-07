@@ -5,6 +5,7 @@ import '../core/theme/app_theme.dart';
 import '../models/walk_session.dart';
 import 'walk_map_viewer_screen.dart';
 
+/// Displays detailed statistics and map for a completed walk session
 class WalkDetailScreen extends ConsumerStatefulWidget {
   final WalkSession session;
 
@@ -42,6 +43,7 @@ class _WalkDetailScreenState extends ConsumerState<WalkDetailScreen> {
     );
   }
 
+  /// Card showing walk completion with screenshot and date
   Widget _buildCompletionCard() {
     return Container(
       decoration: AppTheme.cardDecoration,
@@ -93,6 +95,7 @@ class _WalkDetailScreenState extends ConsumerState<WalkDetailScreen> {
     );
   }
 
+  /// Opens screenshot in fullscreen viewer with zoom
   void _showFullScreenImage() {
     if (widget.session.screenshotPath == null) return;
     
@@ -106,6 +109,7 @@ class _WalkDetailScreenState extends ConsumerState<WalkDetailScreen> {
     );
   }
 
+  /// Card displaying duration and distance stats
   Widget _buildStatsCard() {
     return Container(
       decoration: AppTheme.cardDecoration,
@@ -155,6 +159,7 @@ class _WalkDetailScreenState extends ConsumerState<WalkDetailScreen> {
     );
   }
 
+  /// Button to open interactive map view (disabled if no path data)
   Widget _buildViewMapButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
@@ -175,6 +180,7 @@ class _WalkDetailScreenState extends ConsumerState<WalkDetailScreen> {
     );
   }
 
+  /// Formats date as "Jan 15, 2024"
   String _formatDate(DateTime date) {
     final months = [
       'Jan',
@@ -194,6 +200,7 @@ class _WalkDetailScreenState extends ConsumerState<WalkDetailScreen> {
   }
 }
 
+/// Fullscreen image viewer with pinch-to-zoom
 class _FullScreenImageViewer extends StatelessWidget {
   final String imagePath;
 

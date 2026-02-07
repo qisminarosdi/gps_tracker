@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/tracking_state.dart';
 
-/// Widget showing GPS status and accuracy
+/// widget showing GPS status and accuracy
 class GpsStatusIndicator extends StatelessWidget {
   final TrackingState state;
 

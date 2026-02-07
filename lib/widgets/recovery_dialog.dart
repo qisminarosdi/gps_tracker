@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Dialog shown when a previous tracking session can be recovered
+// Dialog shown when a previous tracking session can be recovered
 class RecoveryDialog extends StatelessWidget {
   final int pointsCount;
   final int markersCount;

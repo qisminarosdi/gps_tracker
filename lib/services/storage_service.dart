@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/tracking_state.dart';
 
-/// Service for persisting tracking data to local storage.
+// Saves tracking data to device storage
 class StorageService {
   static const String _sessionKey = 'tracking_session';
   static const String _hasRecoveredSessionKey = 'has_recovered_session';
